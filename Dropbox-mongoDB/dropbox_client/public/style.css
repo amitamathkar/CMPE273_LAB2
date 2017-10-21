@@ -1,0 +1,41 @@
+body {
+  padding: 50px;
+  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+}
+
+a {
+  color: #00B7FF;
+}
+body{
+	background-image: url("../images/Dropbox2.png");
+}
+div.rows-container div.span3
+{
+	margin-right:5%;
+	border: 1px black solid;
+	padding: 2%;
+	margin-bottom: 5%;
+}
+div.rows-container div.span3 p
+{
+	width:68%;
+}
+form.afterSignIn
+{
+	width:420px;
+	margin:0 auto;
+	margin-top: 8%;
+}
+
+.signIn
+{
+	margin-left : 4%;
+}
+
+.signup
+{
+	width:420px;
+	margin:0 auto;
+	margin-top: 8%;
+	margin-left : 15%;
+}
