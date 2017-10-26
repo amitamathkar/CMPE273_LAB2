@@ -88,13 +88,28 @@ export function setCurrentUser(user) {
 
 export function validateUser(uname,pass) {
     console.log("uname"+uname);
+
     return function(dispatch){
-        axios.post("http://localhost:5001/api/afterSignIn",{
-            uname,pass
+        fetch("http://localhost:5001/api/afterSignIn",{
+            method:"POST",
+            headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        credentials:'include',
+        body: JSON.stringify({username:uname,password:pass})
+            
         })
-        .then(function(response){
-            console.log("response: "+response.data.result);
-            dispatch({type : "LOGIN", payload:response.data.result})})
+        .then(res => res.json())
+        .then(data => 
+
+            
+            dispatch({
+                   type: "LOGIN",
+                   payload: data.result
+            })
+
+        )
         .catch(function(err){
             console.log(err);
         });
@@ -128,28 +143,54 @@ export function uploadDocumentRequest(file, name ) {
   data.append('file', file);
   data.append('name', name);
 
-const config = {
-            headers: { 'content-type': 'multipart/form-data' }
-        }
-        const url = 'http://localhost:5001/api/upload';
+   return function(dispatch) {
+    fetch('http://localhost:5001/api/upload',{
+        mode: 'no-cors',
+     method:"POST",
+            headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        credentials:'include',
+        body: data})
+     .then(res => res.json())
+        .then(data => 
 
+            
+            dispatch({
+                   type: "UPLOAD_DOCUMENT_SUCCESS",
+                   payload: data.files
+            })
 
-  return function(dispatch) {
-    axios.post('http://localhost:5001/api/upload', data)
-     //post(url, data, config)
-      .then(function(response){
-        console.log("response: "+response);
-         dispatch(uploadSuccess(response))
-      })
+        )
+        .catch(function(err){
+            console.log(err);
+        });
   }
 }
 
 export function logOut(file, name ) {  
-return dispatch=>{
-    localStorage.removeItem('jwtToken');
-    setAuthorizationToken(false);
-    dispatch(setCurrentUser({}));
-}
+    return function(dispatch){
+        fetch("http://localhost:5001/api/logout",{
+            method:"POST",
+            headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        credentials:'include'    
+        })
+        //.then(res => res.json())
+        .then(data => 
+            dispatch({
+                   type: "LOGOUT",
+                   payload: data.result
+            })
+
+        )
+        .catch(function(err){
+            console.log(err);
+        });
+    }
 }
 
 export function uploadSuccess({ data }) {
@@ -170,12 +211,25 @@ export function GetFiles(uname) {
     console.log("uname:"+uname);
 
     return function(dispatch){
-        axios.post("http://localhost:5001/api/getAllFiles",{
-            uname
+        fetch("http://localhost:5001/api/getAllFiles",{
+            method:"POST",
+            headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        credentials:'include',    
+        body:    JSON.stringify({uname:uname})
         })
-        .then(function(response){
-            console.log("response: "+response.data.files);
-            dispatch({type : "ALLFILES", payload:response.data.files})})
+        .then(res => res.json())
+        .then(data => 
+
+            
+            dispatch({
+                   type: "ALLFILES",
+                   payload: data.files
+            })
+
+        )
         .catch(function(err){
             console.log(err);
         });
@@ -186,38 +240,110 @@ export function make_star(file_id,value,user_name,Filename) {
     console.log("file_id:"+file_id+"   value: "+value);
 
     return function(dispatch){
-        axios.post("http://localhost:5001/api/make_star",{
-            file_id,value,user_name,Filename
+        fetch("http://localhost:5001/api/make_star",{
+            method:"POST",
+            headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        credentials:'include',    
+        body:    JSON.stringify({file_id:file_id,value:value,user_name:user_name,Filename:Filename})
         })
-        .then(function(response){
-            console.log("response: "+response.data.files);
-            dispatch({type : "STARRED", payload:response.data.files})})
+        .then(res => res.json())
+        .then(data => 
+
+            
+            dispatch({
+                   type: "STARRED",
+                   payload: data.files
+            })
+
+        )
         .catch(function(err){
             console.log(err);
         });
     }
 }
 
-export function insertUserAccount(overview,Experiance,Education,Contact,Hobbies,Achievement,username) {
+export function insertUserAccount(overview,Experiance,Education,Contact,Hobbies,Achievement) {
         console.log("overview:"+overview);
     console.log("Experiance:"+Experiance);
     console.log("Education:"+Education);
     console.log("Contact:"+Contact);
     console.log("Hobbies:"+Hobbies);
     console.log("Achievement:"+Achievement);
-    console.log("username:"+username);
-
-
 
     return function(dispatch){
-        axios.post("http://localhost:5001/api/insertUserAccount",{
-            overview,Experiance,Education,Contact,Hobbies,Achievement,username
+        fetch("http://localhost:5001/api/insertUserAccount",{
+            method:"POST",
+            headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        credentials:'include',
+        body: JSON.stringify({overview:overview,Experiance:Experiance,Education:Education,Contact:Contact,Hobbies:Hobbies,Achievement:Achievement})
         })
-        .then(function(response){
-            console.log("response: "+response.data.files);
-            dispatch({type : "USER_ACCOUNT", payload:response.data.files})})
+        .then(res => res.json())
+        .then(data => 
+            
+            dispatch({
+                   type: "USER_ACCOUNT",
+                   payload: data.files
+            })
+
+        )
         .catch(function(err){
             console.log(err);
         });
     }
 }
+
+export function getUserDetails() {  
+    console.log('user details called');
+    return function(dispatch){
+        fetch("http://localhost:5001/api/getDetails",{
+            method:"POST",
+            headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        credentials:'include'    
+        })
+        .then(res => res.json())
+        .then(data => 
+            dispatch({
+                   type: "DETAILS",
+                   payload: data.details
+            })
+        )
+        .catch(function(err){
+            console.log(err);
+        });
+    }
+}
+
+export function createDirectory(directory_name) {  
+    console.log('createDirectory called');
+    return function(dispatch){
+        fetch("http://localhost:5001/api/createDirectory",{
+            method:"POST",
+            headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        credentials:'include' ,
+        body:JSON.stringify({directory_name:directory_name})   
+        })
+        .then(res => res.json())
+        .then(data => 
+            dispatch({
+                   type: "CREATE_DIR",
+                   payload: data.details
+            })
+        )
+        .catch(function(err){
+            console.log(err);
+        });
+    }
+}
+

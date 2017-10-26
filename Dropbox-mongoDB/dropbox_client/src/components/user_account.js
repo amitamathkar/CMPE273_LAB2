@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 //import logo from './logo.svg';
 import '../App.css';
-import {setOverview,setExperience,setEducation,setContact,setHobbies,setAchievement,insertUserAccount} from "../actions/index";
+import {setOverview,setExperience,setEducation,setContact,setHobbies,setAchievement,insertUserAccount,getUserDetails} from "../actions/index";
 import {connect} from 'react-redux';
 import { Link } from 'react-router-dom'
 import jwt from 'jsonwebtoken';
@@ -11,17 +11,17 @@ class User_Info extends Component {
 
         constructor(props) {
   super(props);
-  this.state = {
-    user_name:jwt.decode(localStorage.jwtToken).username 
-  };
 } 
 
     componentWillMount() {
-      console.log('User account Component WILL MOUNT!' +jwt.decode(localStorage.jwtToken).username)
+      console.log('User account Component WILL MOUNT!')
+      
    }
 
    componentDidMount() {
-      console.log('Home Component DID MOUNT!')
+      console.log('account Component DID MOUNT!')
+      this.props.getUserDetails();
+      console.log("all details displayed:");
    }
 
    componentWillReceiveProps(newProps) {    
@@ -58,6 +58,14 @@ class User_Info extends Component {
         <div className="row">
             <div className="col-sm-12 form-design">
             <div className="form-horizontal">
+
+            <div className="form-group row">
+             <div className="col-sm-4">
+            <label>Firstname:</label></div>
+             <div className="col-sm-4">
+            <input className="form-control" type="text" id="overview" value={this.props.fname}/><br/>
+            </div></div>
+
             <div className="form-group row">
              <div className="col-sm-4">
             <label>User Overview:</label></div>
@@ -115,7 +123,7 @@ class User_Info extends Component {
                 <button className="btn btn-primary btn-margin" onClick={() => {
                                      this.props.insertUserAccount(this.props.overview,this.props.Experiance,
                                         this.props.Education,this.props.Contact,this.props.Hobbies,
-                                        this.props.Achievement,this.state.user_name)
+                                        this.props.Achievement)
                                 }}>Save</button>
                     </div>
                                 </div>
@@ -134,15 +142,17 @@ const mapStateToProps=(state)=> {
         Contact:state.reducer.Contact,
         Hobbies:state.reducer.Hobbies,
         Achievement:state.reducer.Achievement,
-        username:state.reducer.Username
+        name:state.reducer.FirstName,
+        lname:state.reducer.LastName,
+        email:state.reducer.email_id  
     };
 };
 
 const mapDispatchToProps=(dispatch)=> {
-    let actions={setOverview,setExperience,setEducation,setContact,setHobbies,setAchievement}
+    let actions={setOverview,setExperience,setEducation,setContact,setHobbies,setAchievement,getUserDetails}
     return {
-        insertUserAccount : (overview,Experiance,Education,Contact,Hobbies,Achievement,username) => 
-        dispatch(insertUserAccount(overview,Experiance,Education,Contact,Hobbies,Achievement,username)),
+        insertUserAccount : (overview,Experiance,Education,Contact,Hobbies,Achievement) => 
+        dispatch(insertUserAccount(overview,Experiance,Education,Contact,Hobbies,Achievement)),
         ...actions,dispatch
     };
 };

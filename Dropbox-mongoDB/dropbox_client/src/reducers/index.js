@@ -12,7 +12,7 @@ const data = {FirstName:'',
 				Password:'',
 				conf_password:'',
 				email_id:'',
-				isAuthenticated:false,
+				isAuthenticated:'',
 				user:{},
 				overview:'',
 				Experiance:'',
@@ -102,6 +102,23 @@ console.log("received"+action.payload);
 										Hobbies:action.payload.Hobbies,
 										Achievement:action.payload.Achievement})
 
+		case "LOGOUT":		
+			return Object.assign({},state,{result:0,isAuthenticated:false})
+		
+		case "DETAILS":
+		console.log('details action found');
+		if(action.payload===403)
+		{
+			return Object.assign({},state,{result:0,isAuthenticated:false})
+		}
+		else
+		{
+			return Object.assign({},state,{FirstName:action.payload.firstname,LastName:action.payload.lastname,
+				email_id:action.payload.email_id})
+		}
+			
+			
+
 		default:
 		console.log("No action found");
 	}
@@ -113,6 +130,7 @@ const reducer2 = (state = files, action) => {
 	{
 		case "UPLOAD_DOCUMENT_SUCCESS":
 		console.log("Upload success");
+		return Object.assign({},state,{all_files:[...action.payload]})
 
 		case "ALLFILES":
 		console.log("Files success"+action.payload);

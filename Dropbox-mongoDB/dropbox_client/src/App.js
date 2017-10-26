@@ -48,13 +48,13 @@ constructor(props) {
       if(this.props.result==="valid Login")
         {
             console.log("called"+this.props.uname);
-            //const { history } = this.props
-            //history.pushState(null, '/Home');
-            //this.props.history.push('/Home', { message: 'hello, im a passed message!' } );
             this.props.history.push({
   pathname: '/Home',
   state: { message: this.props.result ,Username:this.props.uame}
 })
+/*this.props.history.push({
+  pathname: '/Details'
+})*/
         }
    }
 

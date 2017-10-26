@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
 import Register from './components/register';
+import UserData from './components/Userdetails';
 import Home from './components/Home';
 import store from './reducers/index'
 import User_Info from './components/user_account';
@@ -23,16 +24,14 @@ const Routes = () => (
     <Route path="/signUp" component={Register}></Route>
     <Route path="/Home" component={Home}></Route>
     <Route path="/UserInfo" component={User_Info}></Route>
+    <Route path="/Details" component={UserData}></Route>
+    
     <Route path="/" component={App}></Route>
+
 </Switch>
   </div>
 )
 
-if(localStorage.jwtToken)
-{
-  setAuthorizationToken(localStorage.jwtToken)
-  store.dispatch(setCurrentUser(jwt.decode(localStorage.jwtToken)))
-}
 
 ReactDOM.render(
     <Provider store={store}>

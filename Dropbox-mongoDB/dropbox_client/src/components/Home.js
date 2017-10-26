@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import logo from '../logo.svg';
 import '../App.css';
-import {uploadDocumentRequest,logOut,GetFiles,make_star} from "../actions/index";
+import {uploadDocumentRequest,logOut,GetFiles,make_star,getUserDetails,createDirectory} from "../actions/index";
 import {connect} from 'react-redux';
 import { Link } from 'react-router-dom'
 
@@ -43,17 +43,11 @@ componentWillMount() {
    componentDidUpdate(prevProps, prevState) {
       console.log('Component DID UPDATE!'+this.props.result)
       //this.props.GetFiles("amitam");
-      if(this.props.result==="Logout")
+      if(this.props.isAuthenticated===false)
         {
-            console.log("called"+this.props.uname);
-            //const { history } = this.props
-            //history.pushState(null, '/Home');
-            //this.props.history.push('/Home', { message: 'hello, im a passed message!' } );
-            //this.props.result=0;
-            this.props.history.push({
-  pathname: '/'
-})
-          }
+          console.log("called logout");
+          this.props.history.push("/");
+        }
 
    }
 
@@ -68,9 +62,9 @@ componentWillMount() {
             return(<div className="row App-data" key={key}>
               <div className="col-md-8 pull-left">{item.filename}</div>
               <div className="col-md-1">{item.starred==="no"?<i className="fa fa-star-o" onClick={() => {
-                                this.props.make_star(item.file_id,"yes",this.state.user_name,item.filename)
+                                this.props.make_star(item._id,"yes",this.state.user_name,item.filename)
                             }}></i>:<i className="fa fa-star" onClick={() => {
-                                this.props.make_star(item.file_id,"no",this.state.user_name,item.filename)
+                                this.props.make_star(item._id,"no",this.state.user_name,item.filename)
                             }}></i>}
 
               </div>
@@ -88,6 +82,7 @@ componentWillMount() {
 <div className="maestro-nav__feature-wrap">Sharing</div>
 <div className="maestro-nav__feature-wrap">Deleted Files</div>
 <div className="maestro-nav__feature-wrap"><Link to="/UserInfo">User Account</Link></div>
+<div className="maestro-nav__feature-wrap"><Link to="/Details">User Info</Link></div>
 <div className="maestro-nav__feature-wrap">
 <input type="submit" className="btn btn-info" value="sign out" onClick={() => {
                                      this.props.logOut()}} />
@@ -102,6 +97,9 @@ componentWillMount() {
                                     this.props.uploadDocumentRequest(event.target.files[0],this.state.user_name)
                                     }} />
                                     <label className="btn btn-info" for="upload">Upload File</label>
+  <input type="submit" value="New Folder" className="btn btn-info" name="create_dir" id="create_dir" onClick={() => {
+                                    this.props.createDirectory("test folder")
+                                    }}/>
 </div>
 
 <div className="col-md-8">
@@ -129,7 +127,8 @@ componentWillMount() {
 const mapStateToProps=(state)=> {
     return {
         all_files:state.reducer2.all_files,
-        Username:state.reducer.Username
+        Username:state.reducer.Username,
+        isAuthenticated:state.reducer.isAuthenticated
     };
 };
 
@@ -137,6 +136,9 @@ const mapDispatchToProps=(dispatch)=> {
     return {
         uploadDocumentRequest : (file,filename) => dispatch(uploadDocumentRequest(file,filename)),
         logOut:()=>dispatch(logOut()),
+        getUserDetails:()=>dispatch(getUserDetails()),
+        createDirectory:(directory_name)=>dispatch(createDirectory(directory_name)),
+
         GetFiles:(user_name)=>dispatch(GetFiles(user_name)),
         make_star:(file_id,value,user_name,filename)=>dispatch(make_star(file_id,value,user_name,filename))
     };

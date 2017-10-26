@@ -1,65 +1,83 @@
 const fileUpload = require('express-fileupload');
-var jwt = require('jsonwebtoken');
-var multer = require("multer");
 const bodyParser=require('body-parser');
 var mysql = require('./DbConnection');
 var urlencodedPraser=bodyParser.urlencoded({extended:false});
 var express = require('express')
   , path = require('path');
+var cors = require('cors');
+var ObjectId = require('mongodb').ObjectID
 
-  var MongoClient = require('mongodb').MongoClient;
+var MongoClient = require('mongodb').MongoClient;
 var mongoURL = "mongodb://localhost:27017/dropbox";
+var expressSessions = require("express-session");
+var LocalStrategy = require("passport-local").Strategy;
+var passport = require("passport");
+var mongoSessionURL = "mongodb://localhost:27017/sessions";
+var mongoStore = require("connect-mongo/es5")(expressSessions);
+require('./passport')(passport);
 
-
-
+var fs = require('fs');
+var dir = './tmp';
 
 var app = express();
-                      app.use(function(req, res, next) {
-    res.header('Access-Control-Allow-Origin', "*");
-    res.header('Access-Control-Allow-Methods','GET,PUT,POST,DELETE');
-    res.header('Access-Control-Allow-Headers', 'Content-Type,authorization');
-    next();
-})
+
+var corsOptions = {
+    origin: 'http://localhost:3000',
+    credentials: true,
+}
+app.use(cors(corsOptions))
+
 app.listen(5001,'127.0.0.1');
 console.log('now listenring to port 5001');
 
 //Generate Token using secret from process.env.JWT_SECRET
+app.use(expressSessions({
+    secret: "CMPE273_passport",
+    resave: false,
+    //Forces the session to be saved back to the session store, even if the session was never modified during the request
+    saveUninitialized: false, //force to save uninitialized session to db.
+    //A session is uninitialized when it is new but not modified.
+    duration: 30 * 60 * 1000,
+    activeDuration: 5 * 6 * 1000,
+    store: new mongoStore({
+        url: mongoURL
+    })
+}));
+app.use(passport.initialize());
+app.use(passport.session());
+
 
 
 app.use(bodyParser());
 app.post('/api/afterSignIn',urlencodedPraser,function(req,res){
 		var result;
-// Connect to the db
-MongoClient.connect(mongoURL, function(err, db) {
-  if(err) { return console.dir(err); }
-  else
-  {
 
-console.log('Connected to mongo at: ' + mongoURL);
-                var coll = db.collection('users');
-                console.log('username: '+req.body.uname+', password: '+req.body.pass)
-                coll.findOne({username: req.body.uname, password:req.body.pass}, function(err, user){
-                    if (user) {
-                        console.log('done:'+user)
-                        result="valid Login";
+	passport.authenticate('local', function(err, user) {
+		console.log('1');
+        if(err) {
+            res.status(500).send();
+        }
+
+        if(!user) {
+            res.status(401).send();
+        }
+        req.session.user = user.username;
+        console.log(req.session.user);
+        console.log("session initilized");
+        req.login(user.username,function(err,result){
+        	console.log(req.session.user);
+        	result="valid Login";
 			            console.log("result: "+result);
-			            res.json({result});
+			            //res.json({result});
+        	return res.status(201).json({result:result});
+        });
+        
+    })(req, res);
 
-                    } else {
-                        console.log('error');
-                    }
-                });
-}
-});
-	console.log("scsdvcsvfvfdvdfv:");
 });
 
 
 app.post('/api/signUp',urlencodedPraser,function(req,res){
-	var getUser="select * from users where user_name='"+req.body.uname +"'";
-	var saveUser="insert into users(first_name,last_name,user_name,password,email_id) values('"+
-	req.body.fname+"','"+req.body.lname+"','"+req.body.uname+"',MD5('" + req.body.pass+"'),'"+
-	req.body.email+"')";
 
 	var uname=req.body.uname;
 	var pass=req.body.pass;
@@ -67,90 +85,59 @@ app.post('/api/signUp',urlencodedPraser,function(req,res){
 	var fname=req.body.fname;
 	var email_id=req.body.email;
 
-
-	console.log("Query is:"+saveUser );
-	var status=0;
-	console.log("Query is:"+getUser);
 	var result;
 	MongoClient.connect(mongoURL, function(err, db) {
 var coll = db.collection('users');
 
-  	if(err) { return console.dir(err); }
+  	if(err){res.status(500).send()}
   	else
   	{
 		console.log('Connected to mongo at: ' + mongoURL);
         var coll = db.collection('users');
         console.log('username: '+req.body.uname+', password: '+req.body.pass)
         
-        coll.insert({username:uname,password:pass,email_id:email_id,lastname:lname,firstname:fname});
+        coll.insert({username:uname,password:pass,email_id:email_id,lastname:lname,firstname:fname},function(err,result){
+
+        });
         console.log('record inserted');
         status=2;
 			console.log("Data inserted successfully");
 			res.json({status});
 }
 });
-	/*
-	mysql.fetchData(function(err,results){
-		if(err){
-			throw err;
-		}
-		else 
-		{
-			if(results.length > 0){
-				console.log("record found");
-				status=1;
-				//changes for routing
-				
-			        if (!err) {
-			            
-			        }
-			        else {
-			        	result="Error";
-			            //res.end('An error occurred');
-			            console.log(err);
-			        }
-			    	res.json({status});
-			}
-			else {    
-				console.log("No record");
-
-mysql.insertData(function(err,results){
-		if(err){
-			throw err;
-		}
-		else 
-		{
-			status=2;
-			console.log("Data inserted successfully");
-		}  
-	},saveUser);
-    	res.json({status});
-			}
-		}  
-	},getUser);
-	*/
-	console.log("date insert status:"+status);
+	//console.log("date insert status:"+status);
 	//res.json({result});
 });
 
 app.use(fileUpload());
-app.post('/api/upload', function(req, res){
+app.use( bodyParser.raw({limit: '50mb'}) ); 
 
-/*jwt.verify(req.token,"my_secret_key",function(err,data){
-if(err)
-{
-	res.sendStatus(403);
-}
-else
-{*/
+app.post('/api/upload', function(req, res){
+console.log("method called");
 	  if (!req.files)
     //return res.status(400).send('No files were uploaded.');
 		console.log('No files were uploaded.');
-
-  let sampleFile = req.files.file;
+else
+{
+	  let sampleFile = req.files.file;
    console.log("File Received"+sampleFile);
     console.log("Filename: "+req.body.name);
-  sampleFile.mv('./files/'+sampleFile.name, function(err) {
+
+    if (!fs.existsSync('./files/'+req.user))
+		{
+		 console.log('creating a directory');
+   		 fs.mkdirSync('./files/'+req.user);
+		}
+
+	if (fs.existsSync('./files/'+req.user+'/'+sampleFile.name)) {
+    // Do something
+		console.log('File with same name already exists.');
+		res.status(202).json({details:"File with same name already exists"});
+}
+else
+{
+	console.log('./files/'+req.user+'/'+sampleFile.name);
+  sampleFile.mv('./files/'+req.user+'/'+sampleFile.name, function(err) {
     if (err)
     {
       //return res.status(500).send(err);
@@ -160,151 +147,338 @@ else
 {
         console.log("File is uploaded");
 
-        var saveFile="insert into files(user_name,filepath,filename,filetype,starred) values('"+
-	req.body.name+"','./files/','"+sampleFile.name+"','" + "file"+"','"+
-	"no"+"')";
+	MongoClient.connect(mongoURL, function(err, db) {
+var coll = db.collection('files');
 
-	console.log("Query is:"+saveFile );
-
-	mysql.insertFile(function(err,results){
-		if(err){
-			throw err;
-		}
-		else 
-		{
-			//status=2;
-			var saveActivity="insert into activity(user_name,activity, date) values('"+
-	req.body.name+"','New File uploaded, Filename:,"+sampleFile.name+"',CURDATE()"+")";
-			mysql.insertFile(function(err,results){
-		if(err){
-			throw err;
-		}
-		else 
-		{
-			//status=2;
-			console.log("activity inserted successfully");
-		}  
-	},saveActivity);
-			console.log("File inserted successfully");
-		}  
-	},saveFile);
+  	if(err) { return console.dir(err); }
+  	else
+  	{
+		console.log('Connected to mongo at: ' + mongoURL);
+		var file={
+			user_name:req.user,
+			filepath:'./files/'+req.user+'/',
+			filename:sampleFile.name,
+			filetype:'file',
+			starred:'no'
+		};
+        coll.insert(file,function(err,result){
+        	if(err){res.status(500).send()}
+        		else
+        		{
+        			console.log('file inserted');
+        			//status=2;
+					var activity_details={username:req.user,
+						activity:"New File uploaded, Filename: "+sampleFile.name,
+						date:new Date()};
+					insertActivity(activity_details);
+					coll.find({user_name:req.user}).toArray(function(err,result){
+        			if(err){res.status(500).send()}
+        			else if(result.length)
+        			{
+        				console.log('records found');
+        				res.status(200).json({files:result});
+        			}
+	        		else
+	        		{
+	        			//res.status(200).json({files:"no records"})
+	        			console.log('no records');
+	        		}
+        			});
+        		}
+        });
+}
+});
 	
     }
   });
+}
+}
  });
 
 app.post('/api/getAllFiles',urlencodedPraser,function(req,res){
-	var getFiles="select * from files where user_name='"+ req.body.uname+"'";
-	console.log("Query is:"+getFiles);
-	var result;
-	mysql.fetchData(function(err,results){
-		if(err){
-			throw err;
-		}
-		else 
-		{
-				console.log("files returned");
-			        if (!err) {
-			            //res.end(result);
-			            result="valid Login";
-			            console.log("result: "+result);
-			             res.status(200).json({files:results});
-  }
-			        else {
-			        	result="Error";
-			            //res.end('An error occurred');
-			            console.log(err);
-			            res.status(400);
-			        }
-			    }  
-	},getFiles);
-	console.log("scsdvcsvfvfdvdfv:"+result);
+
+		MongoClient.connect(mongoURL, function(err, db) {
+var coll = db.collection('files');
+
+  	if(err) { return console.dir(err); }
+  	else
+  	{
+		console.log('Connected to mongo at: ' + mongoURL);
+        coll.find({user_name:req.user}).toArray(function(err,result){
+        	if(err){res.status(500).send()}
+        		else if(result.length)
+        		{
+        			res.status(200).json({files:result});
+        		}
+        		else
+        		{
+        			res.status(200).json({files:result});
+        			//res.status(200).json({files:"no records"})
+        		}
+        });
+}
+});
 });
 
 app.post('/api/make_star',urlencodedPraser,function(req,res){
-	//var getFiles="select * from files where file_id='"+ req.body.file_id+"'";
-	var star_file="Update files set starred='"+req.body.value+"' where file_id="+ req.body.file_id;
-	console.log("update Query is:"+star_file);
-	var result;
-	mysql.fetchData(function(err,results){
+
+			MongoClient.connect(mongoURL, function(err, db) {
+var coll = db.collection('files');
+
+  	if(err) { return console.dir(err); }
+  	else
+  	{
+		console.log('Connected to mongo at: ' + mongoURL);
+        var fileid={_id:ObjectId(req.body.file_id)};
+        console.log("_id: "+ObjectId(req.body.file_id));
+        var file_details={$set:
+     			 {
+        			starred:req.body.value
+      }}
+        
+	coll.update(fileid,file_details,function(err,result){
 		if(err){
-			throw err;
+			res.status(500).send();
 		}
-		else 
+		else
 		{
+			console.log('file starred');
 			var activity=req.body.value==="no"?" Unstarred":" Starred";
-			var saveActivity="insert into activity(user_name,activity, date) values('"+
-	req.body.user_name+"','File"+activity+", Filename:,"+req.body.Filename+"',CURDATE()"+")";
-	console.log("Activity query: "+saveActivity);
-			mysql.insertFile(function(err,results){
-		if(err){
-			throw err;
+			var activity_details={username:req.user,
+						activity:"File "+activity+", Filename: "+req.body.Filename,
+						date:new Date()};
+			insertActivity(activity_details);
+			coll.find({user_name:req.user}).toArray(function(err,result){
+        	if(err){res.status(500).send()}
+        		else if(result.length)
+        		{
+        			console.log('records found');
+        			res.status(200).json({files:result});
+        		}
+        		else
+        		{
+        			//res.status(200).json({files:"no records"})
+        			console.log('no records');
+        		}
+        });
 		}
-		else 
-		{
-			//status=2;
-			console.log("activity inserted successfully");
-
-			var all_files="select * from files where user_name='"+req.body.user_name+"'";
-			console.log("select Query is:"+star_file);
-			mysql.fetchData(function(err,results){
-		if(err){
-			throw err;
-		}
-		else 
-		{
-			res.status(200).json({files:results});
-	    }  
-	},all_files);
-		}  
-	},saveActivity);    
-
-	    }  
-	},star_file);
-	console.log("scsdvcsvfvfdvdfv:"+result);
+	})
+}
+});
 });
 
 
-app.post('/api/insertUserAccount',urlencodedPraser,function(req,res){
-	//var getFiles="select * from files where file_id='"+ req.body.file_id+"'";
-	//overview,Experiance,Education,Contact,Hobbies,Achievement,username
-	var user_account="Update users set overview='"+req.body.overview+
-	"',Experience='"+req.body.Experiance+"',Education='"+req.body.Education+
-	"',Contact='"+req.body.Contact+"',Hobbies='"+req.body.Hobbies+"',Achievement='"+req.body.Achievement
-	+"' where user_name='"+ req.body.username+"'";
+app.post('/api/insertUserAccount',function(req,res){
+		MongoClient.connect(mongoURL, function(err, db) {
+var coll = db.collection('users');
 
-	console.log("update Query is:"+user_account);
-	var result;
-	mysql.fetchData(function(err,results){
+  	if(err) { return console.dir(err); }
+  	else
+  	{
+		console.log('Connected to mongo at: ' + mongoURL);
+        var coll = db.collection('users');
+        var uname={username:req.user};
+        console.log("username: "+uname);
+        var bio={$set:
+     			 {
+        			overview: req.body.overview,
+        			Experience: req.body.Experiance,
+        			Education:req.body.Education,
+        			Contact:req.body.Contact,
+        			Hobbies:req.body.Hobbies,
+        			Achievement:req.body.Achievement
+      }}
+        
+	coll.update(uname,bio,function(err,result){
 		if(err){
-			throw err;
+			res.status(500).send();
 		}
-		else 
+		else
 		{
-			//var activity=req.body.value==="no"?" Unstarred":" Starred";
-			var saveActivity="insert into activity(user_name,activity, date) values('"+
-	req.body.user_name+"','User Info added',CURDATE()"+")";
-	console.log("Activity query: "+saveActivity); 
-
-	    }  
-	},user_account);
-	console.log("scsdvcsvfvfdvdfv:"+result);
+			var activity_details={username:req.user,
+						activity:"User Info added",
+						date:new Date()};
+			insertActivity(activity_details);
+			console.log('record updated');
+		}
+	})
+}
+});
 });
 
-//not required
-function ensureToken(req,res,next)
-{
-	const bearerHeader=req.headers["authorization"];
-	console.log(bearerHeader);
-	if(typeof(bearerHeader!==undefined))
+app.post('/api/logout', function(req,res) {
+    console.log(req.session.user);
+    req.logout();
+    req.session.destroy();
+    console.log('Session Destroyed');
+    res.status(200).send();
+});
+
+passport.serializeUser(function(username, done) {
+  done(null, username);
+});
+
+passport.deserializeUser(function(username, done) {
+    done(null, username);
+  
+});
+
+function insertActivity(data){
+console.log("data: "+data);
+	MongoClient.connect(mongoURL, function(err, db) {
+var coll = db.collection('activity');
+
+coll.insertOne(data,function(err,result){
+	if(err){res.status(500).send();}
+	else
 	{
-		const bearer = bearerHeader.split(" ");
-		const bearerToken=bearer[1];
-		req.token=bearerToken;
-		next();
+		console.log('activity added');
+	}
+});
+   
+});
+}
+
+function getFiles(username){
+console.log("username in function: "+username);
+			MongoClient.connect(mongoURL, function(err, db) {
+var coll = db.collection('files');
+
+  	if(err) { return console.dir(err); }
+  	else
+  	{
+		console.log('Connected to mongo at: ' + mongoURL);
+
+        coll.find({user_name:username}).toArray(function(err,result){
+        	if(err){res.status(500).send()}
+        		else if(result.length)
+        		{
+        			console.log('records found');
+        			return result;
+        		}
+        		else
+        		{
+        			//res.status(200).json({files:"no records"})
+        			console.log('no records');
+        		}
+        });
+}
+});
+}
+
+app.post('/api/getDetails',function(req,res){
+console.log('getdetails called');
+	if(checkAuthentication(req))
+	{
+
+		console.log('Authenticated');
+		MongoClient.connect(mongoURL, function(err, db) {
+var coll = db.collection('users');
+
+  	if(err) { return console.dir(err); }
+  	else
+  	{
+		console.log('Connected to mongo at: ' + mongoURL);
+		var uname={username:req.user};
+        console.log("username: "+uname);
+        coll.findOne({username:req.user},function(err,result){
+        	if(err){res.status(500).send()}
+        		
+        		else
+        		{
+        			console.log('record found')
+        			res.status(200).json({details:result});
+
+        			//res.status(200).json({details:"no records"})
+        		}
+        
+});
+    }
+    });
 	}
 	else
 	{
-		res.sendStatus(403);
+		res.status(403).json({details:403});
+
 	}
+		});
+
+function checkAuthentication(req){
+    if(req.isAuthenticated()){
+        //if user is looged in, req.isAuthenticated() will return true 
+        return true;
+    } else{
+        return false;
+    }
 }
+
+app.post('/api/createDirectory',function(req,res){
+console.log('createDirectory called');
+	if(checkAuthentication(req))
+	{
+
+		if (!fs.existsSync('./files/'+req.user))
+		{
+		 console.log('creating a directory');
+   		 fs.mkdirSync('./files/'+req.user);
+		}
+		console.log('Authenticated:'+req.body.directory_name);
+		if (!fs.existsSync('./files/'+req.user+'/'+req.body.directory_name)){
+		 console.log('creating a directory');
+   		 fs.mkdirSync('./files/'+req.user+'/'+req.body.directory_name);
+
+    		MongoClient.connect(mongoURL, function(err, db) {
+		var coll = db.collection('files');
+
+  	if(err) { return console.dir(err); }
+  	else
+  	{
+		console.log('Connected to mongo at: ' + mongoURL);
+        console.log("username: "+req.user);
+		var file={
+			user_name:req.user,
+			filepath:'./files/'+req.user+'/',
+			filename:req.body.directory_name,
+			filetype:'directory',
+			starred:'no'
+		};
+        coll.insert(file,function(err,result){
+        	if(err){res.status(500).send()}
+        		else
+        		{
+        			console.log('folder inserted');
+        			//status=2;
+					var activity_details={username:req.user,
+						activity:"New folder uploaded, Foldername: "+req.body.directory_name,
+						date:new Date()};
+					insertActivity(activity_details);
+					coll.find({user_name:req.user}).toArray(function(err,result){
+        			if(err){res.status(500).send()}
+        			else if(result.length)
+        			{
+        				console.log('records found');
+        				res.status(200).json({files:result});
+        			}
+	        		else
+	        		{
+	        			//res.status(200).json({files:"no records"})
+	        			console.log('no records');
+	        		}
+        			});
+        		}
+        });
+    }
+    });
+
+	}
+	else
+	{
+		res.status(202).json({details:"Folder with same name already exists"});
+	}
+	}
+	else
+	{
+		res.status(403).json({details:403});
+
+	}
+		});
