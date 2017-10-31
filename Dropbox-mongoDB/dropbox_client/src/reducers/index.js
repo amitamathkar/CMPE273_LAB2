@@ -140,6 +140,10 @@ const reducer2 = (state = files, action) => {
 		console.log("Files starred"+action.payload);
 		return Object.assign({},state,{all_files:[...action.payload]})
 
+		case "DELETED":
+		console.log("Files deleted"+action.payload);
+		return Object.assign({},state,{all_files:[...action.payload]})
+
 		default:
 		console.log("No action found");
 	}

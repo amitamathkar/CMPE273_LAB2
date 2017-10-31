@@ -15,6 +15,9 @@ var passport = require("passport");
 var mongoSessionURL = "mongodb://localhost:27017/sessions";
 var mongoStore = require("connect-mongo/es5")(expressSessions);
 require('./passport')(passport);
+var download = require('download-file');
+var kafka = require('./kafka/client');
+
 
 var fs = require('fs');
 var dir = './tmp';
@@ -55,6 +58,7 @@ app.post('/api/afterSignIn',urlencodedPraser,function(req,res){
 	passport.authenticate('local', function(err, user) {
 		console.log('1');
         if(err) {
+            console.log('error:'+err);
             res.status(500).send();
         }
 
@@ -69,7 +73,7 @@ app.post('/api/afterSignIn',urlencodedPraser,function(req,res){
         	result="valid Login";
 			            console.log("result: "+result);
 			            //res.json({result});
-        	return res.status(201).json({result:result});
+        	return res.status(200).json({result:result});
         });
         
     })(req, res);
@@ -86,6 +90,36 @@ app.post('/api/signUp',urlencodedPraser,function(req,res){
 	var email_id=req.body.email;
 
 	var result;
+
+    kafka.make_request('login_topic',{"username":uname,"password":pass,"email_id":email_id,"lastname":lname,"firstname":fname,"topic":"signup_topic"}, function(err,results){
+            console.log('in result');
+            console.log(results);
+            if(err){
+                    console.log('kafka client: some error: '+err);
+                    res.status(500).send()
+                //done(err,{});
+            }
+            else
+            {
+                console.log('else called');
+                if(results.code == 200){
+                    //done(null,{username:username,password:password});
+                    console.log('kafka client: signup done');
+                    console.log('record inserted');
+        status=2;
+            console.log("Data inserted successfully");
+            res.json({status});
+                }
+                else {
+                    console.log('some error occurred:'+results.code)
+                    res.status(500).send()
+
+                    //done(null,false);
+                }
+            }
+        });
+
+    /*
 	MongoClient.connect(mongoURL, function(err, db) {
 var coll = db.collection('users');
 
@@ -104,7 +138,7 @@ var coll = db.collection('users');
 			console.log("Data inserted successfully");
 			res.json({status});
 }
-});
+});*/
 	//console.log("date insert status:"+status);
 	//res.json({result});
 });
@@ -114,6 +148,10 @@ app.use( bodyParser.raw({limit: '50mb'}) );
 
 app.post('/api/upload', function(req, res){
 console.log("method called");
+var parent_flag=false;
+var filepath='';
+var filepath_db='';
+var file={};
 	  if (!req.files)
     //return res.status(400).send('No files were uploaded.');
 		console.log('No files were uploaded.');
@@ -122,22 +160,63 @@ else
 	  let sampleFile = req.files.file;
    console.log("File Received"+sampleFile);
     console.log("Filename: "+req.body.name);
+    console.log("parent flag check: "+req.body.parent_available);
+var check_flag=req.body.parent_available;
+
+    if(String(check_flag)==="false")
+    {
+console.log('inside child logic');
+
+    	parent_flag=false;
+    	filepath='./files/'+req.user+'/'+sampleFile.name;
+    	filepath_db='./files/'+req.user+'/';
+
+    	file={
+			user_name:req.user,
+			filepath:filepath_db,
+			filename:sampleFile.name,
+			filetype:'file',
+			starred:'no',
+			parent_id:req.user,
+            shared_with:[]
+		};
+
+    }
+
+    else{
+
+    	console.log('inside parent logic');
+ 		parent_flag=true;
+    	filepath='./files/'+req.user+'/'+req.body.folder_name+'/'+sampleFile.name;
+    	filepath_db='./files/'+req.user+'/'+req.body.folder_name;
+
+    	file={
+			user_name:req.user,
+			filepath:filepath_db,
+			filename:sampleFile.name,
+			filetype:'file',
+			starred:'no',
+			parent_id:req.body.name,
+            shared_with:[]
+		};
+    	
+    }
 
     if (!fs.existsSync('./files/'+req.user))
 		{
 		 console.log('creating a directory');
    		 fs.mkdirSync('./files/'+req.user);
 		}
-
-	if (fs.existsSync('./files/'+req.user+'/'+sampleFile.name)) {
+console.log("filepath: "+filepath);
+	if (fs.existsSync(filepath)) {
     // Do something
 		console.log('File with same name already exists.');
 		res.status(202).json({details:"File with same name already exists"});
 }
 else
 {
-	console.log('./files/'+req.user+'/'+sampleFile.name);
-  sampleFile.mv('./files/'+req.user+'/'+sampleFile.name, function(err) {
+	console.log(filepath); 
+  sampleFile.mv(filepath, function(err) {
     if (err)
     {
       //return res.status(500).send(err);
@@ -154,13 +233,7 @@ var coll = db.collection('files');
   	else
   	{
 		console.log('Connected to mongo at: ' + mongoURL);
-		var file={
-			user_name:req.user,
-			filepath:'./files/'+req.user+'/',
-			filename:sampleFile.name,
-			filetype:'file',
-			starred:'no'
-		};
+
         coll.insert(file,function(err,result){
         	if(err){res.status(500).send()}
         		else
@@ -187,17 +260,45 @@ var coll = db.collection('files');
         		}
         });
 }
-});
-	
+});	//mongo files insert
     }
-  });
+  });//file upload
 }
-}
+}//parent folder check
+
  });
 
 app.post('/api/getAllFiles',urlencodedPraser,function(req,res){
 
-		MongoClient.connect(mongoURL, function(err, db) {
+        console.log('allfiles user: '+req.body.parent_id);
+        kafka.make_request('login_topic',{"parent_id":req.body.parent_id,"topic":"filelist_topic"}, function(err,results){
+            console.log('in result');
+            console.log(results);
+            if(err){
+                    console.log('kafka client: some error: '+err);
+                    res.status(500).send()
+                //done(err,{});
+            }
+            else
+            {
+                console.log('else called');
+                if(results.code == 200){
+                    //done(null,{username:username,password:password});
+                    console.log('kafka client: signup done');
+                    console.log('files found');
+                    res.status(200).json({files:results.value});
+                }
+                else {
+                    console.log('some error occurred:'+results.code)
+                    res.status(500).send()
+
+                    //done(null,false);
+                }
+            }
+        });
+
+		/*
+        MongoClient.connect(mongoURL, function(err, db) {
 var coll = db.collection('files');
 
   	if(err) { return console.dir(err); }
@@ -218,6 +319,7 @@ var coll = db.collection('files');
         });
 }
 });
+        */
 });
 
 app.post('/api/make_star',urlencodedPraser,function(req,res){
@@ -440,7 +542,8 @@ console.log('createDirectory called');
 			filepath:'./files/'+req.user+'/',
 			filename:req.body.directory_name,
 			filetype:'directory',
-			starred:'no'
+			starred:'no',
+            parent_id:req.user
 		};
         coll.insert(file,function(err,result){
         	if(err){res.status(500).send()}
@@ -481,4 +584,121 @@ console.log('createDirectory called');
 		res.status(403).json({details:403});
 
 	}
-		});
+});
+
+
+app.post('/api/getFiledetails',urlencodedPraser,function(req,res){
+console.log('file details called: '+req.user+" : "+req.body.file_id);
+		MongoClient.connect(mongoURL, function(err, db) {
+var coll = db.collection('files');
+var fileid={_id:ObjectId(req.body.file_id)};
+  	if(err) { return console.dir(err); }
+  	else
+  	{
+		console.log('Connected to mongo at: ' + mongoURL);
+        coll.find(fileid).toArray(function(err,result){
+        	if(err){res.status(500).send()}
+        		else if(result.length)
+        		{
+        			console.log('1');
+        			res.status(200).json({files:result});
+        		}
+        		else
+        		{
+        			console.log('2');
+        			//res.status(200).json({files:result});
+        			res.status(200).json({files:result})
+        		}
+        });
+}
+});
+});
+
+app.post('/api/delete_file',urlencodedPraser,function(req,res){
+
+			MongoClient.connect(mongoURL, function(err, db) {
+var coll = db.collection('files');
+
+  	if(err) { return console.dir(err); }
+  	else
+  	{
+		console.log('Connected to mongo at: ' + mongoURL);
+        var fileid={_id:ObjectId(req.body.file_id)};
+        console.log("_id: "+ObjectId(req.body.file_id)+" : "+req.body.Filename);
+        
+	coll.remove(fileid,function(err,result){
+		if(err){
+			res.status(500).send();
+		}
+		else
+		{
+			console.log('file deleted');
+			var activity_details={username:req.user,
+						activity:"File deleted, Filename: "+req.body.Filename,
+						date:new Date()};
+			insertActivity(activity_details);
+			coll.find({user_name:req.user}).toArray(function(err,result){
+        	if(err){res.status(500).send()}
+        		else if(result.length)
+        		{
+        			console.log('records found');
+        			res.status(200).json({files:result});
+        		}
+        		else
+        		{
+        			//res.status(200).json({files:"no records"})
+        			console.log('no records');
+        		}
+        });
+		}
+	})
+}
+});
+});
+
+app.post('/api/download_file',urlencodedPraser,function(req,res){
+
+			MongoClient.connect(mongoURL, function(err, db) {
+var coll = db.collection('files');
+
+  	if(err) { return console.dir(err); }
+  	else
+  	{
+		console.log('Connected to mongo at: ' + mongoURL);
+        var fileid={_id:ObjectId(req.body.file_id)};
+        console.log("download _id: "+ObjectId(req.body.file_id)+" : "+req.body.Filename);
+        
+	coll.findOne(fileid,function(err,result){
+		if(err){
+			res.status(500).send();
+		}
+		else
+		{
+			console.log('file found: '+result.filepath+result.filename);
+			res.download(result.filepath+result.filename,result.filename);
+    				console.log("downloaded")
+		
+
+			var activity_details={username:req.user,
+						activity:"File downloaded, Filename: "+req.body.Filename,
+						date:new Date()};
+			insertActivity(activity_details);
+			coll.find({user_name:req.user}).toArray(function(err,result){
+        	if(err){res.status(500).send()}
+        		else if(result.length)
+        		{
+        			console.log('records found');
+        			res.status(200).json({files:result});
+        		}
+        		else
+        		{
+        			//res.status(200).json({files:"no records"})
+        			console.log('no records');
+        		}
+        });
+		}
+	})
+}
+});
+});
+

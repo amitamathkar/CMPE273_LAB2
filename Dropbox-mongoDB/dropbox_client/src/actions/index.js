@@ -2,6 +2,7 @@ import axios from "axios";
 import setAuthorizationToken from "../utils/setAuthorizationToken";
 import { post } from 'axios';
 import jwt from 'jsonwebtoken';
+var fileDownload = require('react-file-download');
 export function setUsername(uname) {
     return {
         type : "USERNAME",
@@ -136,12 +137,16 @@ export function signUpUser(fname,lname,uname,pass,email) {
     }
 }
 
-export function uploadDocumentRequest(file, name ) {  
-  console.log("name:"+name)
-  console.log("file:"+file)
+export function uploadDocumentRequest(file, file_id,folder_name,flag ) {  
+  console.log("name:"+file_id)
+  console.log("file:"+folder_name)
   var data = new FormData();
   data.append('file', file);
-  data.append('name', name);
+  data.append('name', file_id);
+  data.append('parent_available', flag);
+  data.append('folder_name', folder_name);
+
+
 
    return function(dispatch) {
     fetch('http://localhost:5001/api/upload',{
@@ -218,7 +223,7 @@ export function GetFiles(uname) {
             'Content-Type': 'application/json'
         },
         credentials:'include',    
-        body:    JSON.stringify({uname:uname})
+        body:    JSON.stringify({parent_id:uname})
         })
         .then(res => res.json())
         .then(data => 
@@ -347,3 +352,120 @@ export function createDirectory(directory_name) {
     }
 }
 
+export function GetFiledetails(file_id) {
+    console.log("uname:"+file_id);
+
+    return function(dispatch){
+        fetch("http://localhost:5001/api/getFiledetails",{
+            method:"POST",
+            headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        credentials:'include',    
+        body:    JSON.stringify({file_id:file_id})
+        })
+        .then(res => res.json())
+        .then(data => 
+
+            
+            dispatch({
+                   type: "ALLFILES",
+                   payload: data.files
+            })
+
+        )
+        .catch(function(err){
+            console.log(err);
+        });
+    }
+}
+
+export function delete_file(file_id,Filename) {
+    console.log("file_id:"+file_id+"   value: "+Filename);
+
+    return function(dispatch){
+        fetch("http://localhost:5001/api/delete_file",{
+            method:"POST",
+            headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        credentials:'include',    
+        body:    JSON.stringify({file_id:file_id,Filename:Filename})
+        })
+        .then(res => res.json())
+        .then(data => 
+
+            
+            dispatch({
+                   type: "DELETE",
+                   payload: data.files
+            })
+
+        )
+        .catch(function(err){
+            console.log(err);
+        });
+    }
+}
+
+export function download_file(file_id,Filename) {
+    console.log("file_id:"+file_id+"   value: "+Filename);
+
+    return function(dispatch){
+        fetch("http://localhost:5001/api/download_file",{
+            method:"POST",
+            headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        credentials:'include',    
+        body:    JSON.stringify({file_id:file_id,Filename:Filename})
+        })
+        .then(res => {
+            fileDownload(res.data, Filename),
+            res.json()})
+        .then(data => 
+
+            
+            dispatch({
+                   type: "DELETE",
+                   payload: data.files
+            })
+
+        )
+        .catch(function(err){
+            console.log(err);
+        });
+    }
+}
+
+export function GetFolderFiles(file_id) {
+    console.log("uname:"+file_id);
+
+    return function(dispatch){
+        fetch("http://localhost:5001/api/getAllFiles",{
+            method:"POST",
+            headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        credentials:'include',    
+        body:    JSON.stringify({parent_id:file_id})
+        })
+        .then(res => res.json())
+        .then(data => 
+
+            
+            dispatch({
+                   type: "ALLFILES",
+                   payload: data.files
+            })
+
+        )
+        .catch(function(err){
+            console.log(err);
+        });
+    }
+}

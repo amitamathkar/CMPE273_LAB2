@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import logo from '../logo.svg';
 import '../App.css';
-import {uploadDocumentRequest,logOut,GetFiles,make_star,getUserDetails,createDirectory} from "../actions/index";
+import {uploadDocumentRequest,logOut,GetFiles,make_star,getUserDetails,createDirectory,delete_file,download_file} from "../actions/index";
 import {connect} from 'react-redux';
 import { Link } from 'react-router-dom'
 
@@ -10,7 +10,7 @@ class Home extends Component {
 	constructor(props) {
   super(props);
   this.state = {
-    message:this.props.location.state.message,
+   //message:this.props.location.state.message,
     user_name:this.props.location.state.Username,
     all_files:[]
   };
@@ -60,7 +60,11 @@ componentWillMount() {
     var files=
           this.props.all_files.map((item,key)=>{
             return(<div className="row App-data" key={key}>
-              <div className="col-md-8 pull-left">{item.filename}</div>
+              <div className="col-md-1">{item.filetype==="file"?<i className="fa fa-file"></i>:<i className="fa fa-folder"></i>}
+
+              </div>
+              <div className="col-md-6 pull-left">{item.filetype==="directory"?
+              <Link to={{ pathname: '/Folder_activities', state: { message: item._id,folder_name:item.filename,username:this.state.user_name},target:"_blank" }}>{item.filename}</Link>:<span>{item.filename}</span>}</div>
               <div className="col-md-1">{item.starred==="no"?<i className="fa fa-star-o" onClick={() => {
                                 this.props.make_star(item._id,"yes",this.state.user_name,item.filename)
                             }}></i>:<i className="fa fa-star" onClick={() => {
@@ -68,7 +72,18 @@ componentWillMount() {
                             }}></i>}
 
               </div>
-              <div className="col-md-3"><button className="btn btn-info hr_btn_height">...</button></div>
+              <div className="col-md-4">
+              <i className="fa fa-trash col-md-2" onClick={() => {
+                                this.props.delete_file(item._id,item.filename)
+                            }}></i>
+              
+              <i className="fa fa-download col-md-2" onClick={() => {
+                                this.props.download_file(item._id,item.filename)
+                            }}></i>
+
+              <i className="fa fa-share-alt col-md-2" data-toggle="modal" data-target="#shareModal"></i>             
+
+              </div>
                             <div className="hr-line-dashed"></div>
               </div>)
           }
@@ -77,7 +92,7 @@ componentWillMount() {
     return (
       <div className="App col-md-12">
       <div className="col-md-2">
-<img src="dropbox.png" className="imgStyle"/>
+<Link to={{ pathname: '/Home', state: { message: this.props.result ,Username:this.props.uame},target:"_blank" }}><img src="dropbox.png" className="imgStyle"/></Link>
 <div className="maestro-nav__feature-wrap">My Files</div>
 <div className="maestro-nav__feature-wrap">Sharing</div>
 <div className="maestro-nav__feature-wrap">Deleted Files</div>
@@ -94,12 +109,10 @@ componentWillMount() {
 </div>
 <div className="pull-right col-md-6">
  <input type="file" className="inputfile" name="upload" id="upload" onChange={(event) => {
-                                    this.props.uploadDocumentRequest(event.target.files[0],this.state.user_name)
+                                    this.props.uploadDocumentRequest(event.target.files[0],this.state.user_name,'',false)
                                     }} />
                                     <label className="btn btn-info" for="upload">Upload File</label>
-  <input type="submit" value="New Folder" className="btn btn-info" name="create_dir" id="create_dir" onClick={() => {
-                                    this.props.createDirectory("test folder")
-                                    }}/>
+  <input type="submit" value="New Folder" className="btn btn-info" name="create_dir" id="create_dir" data-toggle="modal" data-target="#myModal"/>
 </div>
 
 <div className="col-md-8">
@@ -118,6 +131,50 @@ componentWillMount() {
       </div>
       </div>
 
+<div className="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div className="modal-dialog" role="document">
+    <div className="modal-content">
+      <div className="modal-header">
+        <h5 className="modal-title" id="exampleModalLabel">Modal title</h5>
+        <button type="button" className="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div className="modal-body">
+        enter folder name: <input type="text" id="foldername"/ >
+      </div>
+      <div className="modal-footer">
+        <button type="button" className="btn btn-secondary" data-dismiss="modal">Close</button>
+        <button type="button" className="btn btn-info"  onClick={() => {
+                                    this.props.createDirectory(document.getElementById('foldername').value)
+                                    }}>Create Folder</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div className="modal fade" id="shareModal" tabindex="-1" role="dialog" aria-labelledby="shareModalLabel" aria-hidden="true">
+  <div className="modal-dialog" role="document">
+    <div className="modal-content">
+      <div className="modal-header">
+        <h5 className="modal-title" id="exampleModalLabel">Modal title</h5>
+        <button type="button" className="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div className="modal-body">
+        enter folder name: <input type="text" id="foldername"/ >
+      </div>
+      <div className="modal-footer">
+        <button type="button" className="btn btn-secondary" data-dismiss="modal">Close</button>
+        <button type="button" className="btn btn-info" onClick={() => {
+                                    this.props.createDirectory(document.getElementById('foldername').value)
+                                    }}>Create Folder</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </div>
         
     );
@@ -134,13 +191,16 @@ const mapStateToProps=(state)=> {
 
 const mapDispatchToProps=(dispatch)=> {
     return {
-        uploadDocumentRequest : (file,filename) => dispatch(uploadDocumentRequest(file,filename)),
+        uploadDocumentRequest : (file,filename,folder_name,parent_available) => dispatch(uploadDocumentRequest(file,filename,folder_name,parent_available)),
         logOut:()=>dispatch(logOut()),
         getUserDetails:()=>dispatch(getUserDetails()),
         createDirectory:(directory_name)=>dispatch(createDirectory(directory_name)),
 
         GetFiles:(user_name)=>dispatch(GetFiles(user_name)),
-        make_star:(file_id,value,user_name,filename)=>dispatch(make_star(file_id,value,user_name,filename))
+        make_star:(file_id,value,user_name,filename)=>dispatch(make_star(file_id,value,user_name,filename)),
+        delete_file:(_id,filename)=>dispatch(delete_file(_id,filename)),
+        download_file:(_id,filename)=>dispatch(download_file(_id,filename))
+
     };
 };
 export default connect(mapStateToProps, mapDispatchToProps)(Home);
