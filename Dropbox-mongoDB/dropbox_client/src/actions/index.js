@@ -469,3 +469,151 @@ export function GetFolderFiles(file_id) {
         });
     }
 }
+
+export function share_file(file_id,usernames) {
+    console.log("file_id:"+file_id+"   value: "+usernames);
+
+    return function(dispatch){
+        fetch("http://localhost:5001/api/share_file",{
+            method:"POST",
+            headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        credentials:'include',    
+        body:    JSON.stringify({file_id:file_id,usernames:usernames})
+        })
+        .then(res => res.json())
+        .then(data => 
+        
+        dispatch({
+                   type: "ALLFILES",
+                   payload: data.files
+            })
+
+        )
+        .catch(function(err){
+            console.log(err);
+        });
+    }
+}
+
+export function GetSharedFiles(uname) {
+    console.log("uname:"+uname);
+
+    return function(dispatch){
+        fetch("http://localhost:5001/api/getSharedFiles",{
+            method:"POST",
+            headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        credentials:'include',    
+        body:    JSON.stringify({username:uname})
+        })
+        .then(res => res.json())
+        .then(data => 
+
+            
+            dispatch({
+                   type: "ALLFILES",
+                   payload: data.files
+            })
+
+        )
+        .catch(function(err){
+            console.log(err);
+        });
+    }
+}
+
+export function create_group(groupname,members) {
+    console.log("uname:"+groupname);
+    console.log("members:"+members);
+
+
+    return function(dispatch){
+        fetch("http://localhost:5001/api/create_group",{
+            method:"POST",
+            headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        credentials:'include',    
+        body:    JSON.stringify({groupname:groupname,members:members})
+        })
+        .then(res => res.json())
+        .then(data => 
+
+            
+            dispatch({
+                   type: "ALLFILES",
+                   payload: data.files
+            })
+
+        )
+        .catch(function(err){
+            console.log(err);
+        });
+    }
+}
+
+export function add_member(groupname,members) {
+    console.log("uname:"+groupname);
+    console.log("members:"+members);
+
+
+    return function(dispatch){
+        fetch("http://localhost:5001/api/add_group_member",{
+            method:"POST",
+            headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        credentials:'include',    
+        body:    JSON.stringify({groupname:groupname,members:members})
+        })
+        .then(res => res.json())
+        .then(data => 
+
+            
+            dispatch({
+                   type: "ALLFILES",
+                   payload: data.files
+            })
+
+        )
+        .catch(function(err){
+            console.log(err);
+        });
+    }
+}
+
+export function get_members(groupname) {
+    console.log("uname:"+groupname);
+    console.log("members:"+members);
+
+
+    return function(dispatch){
+        fetch("http://localhost:5001/api/getGroupMembers",{
+            method:"POST",
+            headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        credentials:'include',    
+        body:    JSON.stringify({groupname:groupname})
+        })
+        .then(res => res.json())
+        .then(data =>             
+            dispatch({
+                   type: "GROUPMEMBERS",
+                   payload: {groupname:groupname,group_members:data.members}
+            })
+
+        )
+        .catch(function(err){
+            console.log(err);
+        });
+    }
+}

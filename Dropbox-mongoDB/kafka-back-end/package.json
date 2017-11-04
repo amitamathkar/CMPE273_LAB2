@@ -11,10 +11,13 @@
   "dependencies": {
     "bcrypt": "^1.0.3",
     "crypto": "^1.0.1",
+    "fs": "0.0.1-security",
     "kafka-node": "^2.2.3",
+    "large-split": "^0.1.2",
     "mongodb": "^2.2.31",
     "passport": "^0.4.0",
     "passport-local": "^1.0.0",
-    "passport-local-authenticate": "^1.2.0"
+    "passport-local-authenticate": "^1.2.0",
+    "split-file": "^2.1.0"
   }
 }

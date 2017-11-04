@@ -6,6 +6,8 @@ import Register from './components/register';
 import UserData from './components/Userdetails';
 import Home from './components/Home';
 import Folder_activities from './components/Folder_activities';
+import Shared_Files from './components/Shared_Files';
+
 
 import store from './reducers/index'
 import User_Info from './components/user_account';
@@ -27,7 +29,10 @@ const Routes = () => (
     <Route path="/Home" component={Home}></Route>
     <Route path="/UserInfo" component={User_Info}></Route>
     <Route path="/Details" component={UserData}></Route>
+    <Route path="/SharedFiles" component={Shared_Files}></Route>
     <Route path="/Folder_activities" component={Folder_activities}></Route>
+
+
 
 
     <Route path="/" component={App}></Route>

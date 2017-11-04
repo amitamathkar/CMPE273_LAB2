@@ -22,7 +22,11 @@ const data = {FirstName:'',
 				Achievement:''}
 const files={
 	filename:'',
-	all_files:[]
+	all_files:[],
+	starred_files[],
+	shared_files[],
+	group_members[],
+	groupname:''
 }
 
 const reducer = (state = data, action) => {
@@ -143,6 +147,10 @@ const reducer2 = (state = files, action) => {
 		case "DELETED":
 		console.log("Files deleted"+action.payload);
 		return Object.assign({},state,{all_files:[...action.payload]})
+
+		case "GROUPMEMBERS":
+		console.log("GROUPMEMBERS"+action.payload);
+		return Object.assign({},state,{groupname:actio.payload.groupname,group_members:[...action.payload.group_members]})
 
 		default:
 		console.log("No action found");

@@ -83,6 +83,7 @@ app.post('/api/afterSignIn',urlencodedPraser,function(req,res){
 
 app.post('/api/signUp',urlencodedPraser,function(req,res){
 
+console.log('signup called')
 	var uname=req.body.uname;
 	var pass=req.body.pass;
 	var lname=req.body.lname;
@@ -108,7 +109,7 @@ app.post('/api/signUp',urlencodedPraser,function(req,res){
                     console.log('record inserted');
         status=2;
             console.log("Data inserted successfully");
-            res.json({status});
+            res.status(200).json({status});
                 }
                 else {
                     console.log('some error occurred:'+results.code)
@@ -118,29 +119,6 @@ app.post('/api/signUp',urlencodedPraser,function(req,res){
                 }
             }
         });
-
-    /*
-	MongoClient.connect(mongoURL, function(err, db) {
-var coll = db.collection('users');
-
-  	if(err){res.status(500).send()}
-  	else
-  	{
-		console.log('Connected to mongo at: ' + mongoURL);
-        var coll = db.collection('users');
-        console.log('username: '+req.body.uname+', password: '+req.body.pass)
-        
-        coll.insert({username:uname,password:pass,email_id:email_id,lastname:lname,firstname:fname},function(err,result){
-
-        });
-        console.log('record inserted');
-        status=2;
-			console.log("Data inserted successfully");
-			res.json({status});
-}
-});*/
-	//console.log("date insert status:"+status);
-	//res.json({result});
 });
 
 app.use(fileUpload());
@@ -296,30 +274,6 @@ app.post('/api/getAllFiles',urlencodedPraser,function(req,res){
                 }
             }
         });
-
-		/*
-        MongoClient.connect(mongoURL, function(err, db) {
-var coll = db.collection('files');
-
-  	if(err) { return console.dir(err); }
-  	else
-  	{
-		console.log('Connected to mongo at: ' + mongoURL);
-        coll.find({user_name:req.user}).toArray(function(err,result){
-        	if(err){res.status(500).send()}
-        		else if(result.length)
-        		{
-        			res.status(200).json({files:result});
-        		}
-        		else
-        		{
-        			res.status(200).json({files:result});
-        			//res.status(200).json({files:"no records"})
-        		}
-        });
-}
-});
-        */
 });
 
 app.post('/api/make_star',urlencodedPraser,function(req,res){
@@ -339,7 +293,7 @@ var coll = db.collection('files');
       }}
         
 	coll.update(fileid,file_details,function(err,result){
-		if(err){
+		if(err) {
 			res.status(500).send();
 		}
 		else
@@ -702,3 +656,288 @@ var coll = db.collection('files');
 });
 });
 
+app.post('/api/share_file',urlencodedPraser,function(req,res){
+        var activity_unames="";
+        var unames=[];
+            MongoClient.connect(mongoURL, function(err, db) {
+var coll = db.collection('files');
+
+    if(err) { return console.dir(err); }
+    else
+    {
+        console.log('Connected to mongo at: ' + mongoURL);
+        var fileid={_id:ObjectId(req.body.file_id)};
+        console.log("_id: "+ObjectId(req.body.file_id));
+        var usernames = req.body.usernames.split(',');
+
+        usernames.forEach(function(value){
+        console.log(value);
+        activity_unames +=value+",";
+        unames.push(value) ;
+        });
+        //unames=unames.substr(0, unames.length-1);
+        //console.log("usernames:"+unames.substr(0, unames.length-1));
+        var file_details={$push:{ shared_with:{$each:unames} }}
+        console.log("file details: "+JSON.stringify(file_details));
+/*
+db.getCollection('files').update(
+   { _id: ObjectId("59f933b5bde74a2d6ca21a9a")},
+   { $push: { shared_with: {$each: [ "aman","hkbhatia","amitam" ]} } }
+)
+*/
+
+    coll.update(fileid,file_details,function(err,result){
+        if(err){
+            res.status(500).send();
+        }
+        else
+        {
+            console.log('file shared');
+            var activity=req.body.value==="no"?" Unstarred":" Starred";
+            var activity_details={username:req.user,
+                        activity:"File shred with "+activity_unames.substr(0, activity_unames.length-1),
+                        date:new Date()};
+            insertActivity(activity_details);
+            coll.find({parent_id:req.user}).toArray(function(err,result){
+            if(err){res.status(500).send()}
+                else if(result.length)
+                {
+                    console.log('records found');
+                    res.status(200).json({files:result});
+                }
+                else
+                {
+                    //res.status(200).json({files:"no records"})
+                    console.log('no records');
+                }
+        });
+        }
+    })
+    
+}
+});
+});
+
+app.post('/api/getSharedFiles',urlencodedPraser,function(req,res){
+
+        console.log('allfiles user: '+req.body.parent_id);
+        kafka.make_request('login_topic',{"username":req.user,"topic":"shared_files"}, function(err,results){
+            console.log('in result');
+            console.log(results);
+            if(err){
+                    console.log('kafka client: some error: '+err);
+                    res.status(500).send()
+                //done(err,{});
+            }
+            else
+            {
+                console.log('else called');
+                if(results.code == 200){
+                    //done(null,{username:username,password:password});
+                    console.log('kafka client: signup done');
+                    console.log('files found');
+                    res.status(200).json({files:results.value});
+                }
+                else {
+                    console.log('some error occurred:'+results.code)
+                    res.status(500).send()
+
+                    //done(null,false);
+                }
+            }
+        });
+});
+
+app.post('/api/create_group',urlencodedPraser,function(req,res){
+        var activity_unames="";
+        var member_names=[];
+            MongoClient.connect(mongoURL, function(err, db) {
+var coll = db.collection('groups');
+
+    if(err) { return console.dir(err); }
+    else
+    {
+        console.log('Connected to mongo at: ' + mongoURL);
+        var fileid={_id:ObjectId(req.body.file_id)};
+        console.log("_id: "+req.user);
+        var members = req.body.members.split(',');
+
+        members.forEach(function(value){
+        console.log(value);
+        activity_unames +=value+",";
+        member_names.push(value) ;
+        });
+
+    coll.insert({username:req.user,groupname:req.body.groupname,members:member_names},function(err,result){
+        if(err){
+            res.status(500).send();
+        }
+        else
+        {
+            console.log('group created');
+            
+            var activity_details={username:req.user,
+                        activity:"new group created by "+ req.user+ " with members: " +activity_unames.substr(0, activity_unames.length-1),
+                        date:new Date()};
+            insertActivity(activity_details);
+            coll.find({parent_id:req.user}).toArray(function(err,result){
+            if(err){res.status(500).send()}
+                else if(result.length)
+                {
+                    console.log('records found');
+                    res.status(200).json({files:result});
+                }
+                else
+                {
+                    //res.status(200).json({files:"no records"})
+                    console.log('no records');
+                }
+        });
+        }
+    })    
+}
+});
+});
+
+
+app.post('/api/add_group_member',urlencodedPraser,function(req,res){
+        var activity_unames="";
+        var member_names=[];
+            MongoClient.connect(mongoURL, function(err, db) {
+var coll = db.collection('groups');
+
+    if(err) { return console.dir(err); }
+    else
+    {
+        console.log('Connected to mongo at: ' + mongoURL);
+        var fileid={_id:ObjectId(req.body.file_id)};
+        console.log("_id: "+req.user);
+        var members = req.body.members.split(',');
+
+        members.forEach(function(value){
+        console.log(value);
+        activity_unames +=value+",";
+        member_names.push(value) ;
+        });
+        var member_details={$push:{ members:{$each:member_names} }}
+
+    coll.update({groupname:req.body.groupname},member_details,function(err,result){
+        if(err){
+            res.status(500).send();
+        }
+        else
+        {
+            console.log('member added');
+            
+            var activity_details={username:req.user,
+                        activity:"new group member added by "+ req.user+ "  members: " +activity_unames.substr(0, activity_unames.length-1),
+                        date:new Date()};
+            insertActivity(activity_details);
+            coll.find({parent_id:req.user}).toArray(function(err,result){
+            if(err){res.status(500).send()}
+                else if(result.length)
+                {
+                    console.log('records found');
+                    res.status(200).json({files:result});
+                }
+                else
+                {
+                    //res.status(200).json({files:"no records"})
+                    console.log('no records');
+                }
+        });
+        }
+    })    
+}
+});
+});
+
+app.post('/api/getGroupMembers',urlencodedPraser,function(req,res){
+
+        console.log('groupname: '+req.body.groupname);
+        kafka.make_request('login_topic',{"groupname":req.body.groupname,"topic":"group_members"}, function(err,results){
+            console.log('in result');
+            console.log(results);
+            if(err){
+                    console.log('kafka client: some error: '+err);
+                    res.status(500).send()
+                //done(err,{});
+            }
+            else
+            {
+                console.log('else called');
+                if(results.code == 200){
+                    //done(null,{username:username,password:password});
+                    console.log('kafka client: signup done');
+                    console.log('files found');
+                    res.status(200).json({files:results.value});
+                }
+                else {
+                    console.log('some error occurred:'+results.code)
+                    res.status(500).send()
+
+                    //done(null,false);
+                }
+            }
+        });
+});
+
+app.post('/api/test_upload', function(req, res){
+console.log("method called");
+var parent_flag=false;
+var filepath='';
+var filepath_db='';
+var file={};
+      if (!req.files)
+    //return res.status(400).send('No files were uploaded.');
+        console.log('No files were uploaded.');
+else
+{
+    let sampleFile = req.files.file;
+   console.log("File Received"+sampleFile);
+    console.log("Filename: "+req.body.name);
+    console.log("parent flag check: "+req.body.parent_available);
+
+    var filepath='';
+    filepath='./files/'+req.user+'/'+sampleFile.name;
+    sampleFile.mv(filepath, function(err) {});
+
+    var myReadStream=fs.createReadStream(filepath,'utf8',{ highWaterMark: 50000 });
+
+    var data=[];
+    myReadStream.on('data',function(chunk){
+        console.log('new chunk received');
+        //console.log(chunk);
+        data.push(chunk);
+        var counter=0;
+        //for (var i = 0, len = data.length; i < len; i++)
+        //{
+            kafka.make_poolRequest('login_topic',{"chunk":data[i],"filename":sampleFile.name,"topic":"file_upload"}, function(err,results){
+            console.log('in result');
+            console.log(results);
+            if(err){
+                    console.log('kafka client: some error: '+err);
+                    res.status(500).send()
+                //done(err,{});
+            }
+            else
+            {
+                console.log('else called');
+                if(results.code == 200){
+                    //done(null,{username:username,password:password});
+                    console.log('kafka client: signup done');
+                    console.log('files found');
+                    res.status(200).json({files:results.value});
+                }
+                else {
+                    console.log('some error occurred:'+results.code)
+                    res.status(500).send()
+                    //done(null,false);
+                }
+            }
+        });
+            counter+=1;
+        //}       
+    })
+}
+ });
